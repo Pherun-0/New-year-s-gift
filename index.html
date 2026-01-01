@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interstellar 2026 Arrival</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { overflow: hidden; background-color: #000; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        canvas { display: block; }
+
+        /* 1. Timer Styling (Glassmorphism) - Mobile First */
+        #timer-container {
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            display: flex; gap: 10px;
+            padding: 20px 30px;
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.8);
+            z-index: 10;
+            color: white;
+            transition: border-color 0.5s ease;
+        }
+        .time-segment { display: flex; flex-direction: column; align-items: center; min-width: 60px; }
+        .number { font-size: 2rem; font-weight: 700; letter-spacing: 1px; }
+        .label { font-size: 0.6rem; text-transform: uppercase; letter-spacing: 1px; opacity: 0.7; margin-top: 5px; }
+
+        @media (min-width: 768px) {
+            #timer-container { gap: 15px; padding: 25px 40px; border-radius: 18px; }
+            .time-segment { min-width: 70px; }
+            .number { font-size: 3rem; letter-spacing: 1.5px; }
+            .label { font-size: 0.65rem; letter-spacing: 1.5px; }
+        }
+
+        @media (min-width: 1024px) {
+            #timer-container { gap: 20px; padding: 30px 50px; border-radius: 20px; }
+            .time-segment { min-width: 80px; }
+            .number { font-size: 3.5rem; letter-spacing: 2px; }
+            .label { font-size: 0.7rem; letter-spacing: 2px; }
+        }
+
+        /* 2. Cinematic Overlays */
+        #flash {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            background: white; opacity: 0; pointer-events: none; z-index: 100;
+            transition: opacity 0.5s ease-in;
+        }
+
+        #new-year-ui {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            text-align: center; display: none; z-index: 20;
+            width: 90%; max-width: 800px;
+        }
+        #new-year-ui h1 { 
+            font-size: 2.5rem; margin: 0 0 20px 0;
+            background: linear-gradient(45deg, #ffd700, #ffed4e, #ffd700, #ff6b35, #ff006e);
+            background-size: 300% 300%;
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+            animation: gradientShift 3s ease infinite, glow 2s ease-in-out infinite;
+            font-weight: 900; letter-spacing: 3px; text-transform: uppercase;
+        }
+        #new-year-ui p {
+            font-size: 1rem; color: rgba(255, 255, 255, 0.9);
+            background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px); padding: 15px 25px;
+            border-radius: 50px; border: 1px solid rgba(255, 215, 0, 0.3);
+            display: inline-block; text-shadow: 0 0 20px rgba(255, 215, 0, 0.5); letter-spacing: 2px;
+        }
+
+        @keyframes gradientShift { 0%, 100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
+        @keyframes glow { 0%, 100% { filter: drop-shadow(0 0 10px rgba(255, 215, 0, 0.6)); } 50% { filter: drop-shadow(0 0 30px rgba(255, 215, 0, 0.9)); } }
+
+        @media (min-width: 768px) { #new-year-ui h1 { font-size: 4rem; } #new-year-ui p { font-size: 1.2rem; } }
+        @media (min-width: 1024px) { #new-year-ui h1 { font-size: 5rem; } #new-year-ui p { font-size: 1.4rem; } }
+
+        #credits {
+            position: absolute; bottom: -120%; left: 50%; transform: translateX(-50%);
+            width: 90%; max-width: 800px; text-align: center; color: #FFE4B5;
+            font-size: 1.5rem; line-height: 1.8; z-index: 150; padding: 0 20px;
+            display: none; text-shadow: 0 2px 10px rgba(0, 0, 0, 0.8);
+        }
+        #credits.visible { display: block; }
+        #credits.roll-up { animation: roll 40s linear forwards; }
+        @keyframes roll { 0% { bottom: -120%; } 100% { bottom: 200%; } }
+
+        /* 3. Gift & Bible Verse */
+        #gift-container {
+            display: none; position: fixed; bottom: 30px; left: 50%;
+            transform: translateX(-50%); cursor: pointer; text-align: center; z-index: 50;
+        }
+        .gift-box { font-size: 3rem; filter: drop-shadow(0 0 10px gold); animation: pulse 1.5s infinite; }
+        #gift-container p { color: gold; font-size: 0.7rem; margin-top: 5px; }
+        @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.1); } }
+
+        #verse-overlay {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.95); color: white; flex-direction: column;
+            justify-content: center; align-items: center; z-index: 200; text-align: center; padding: 30px 20px;
+        }
+        #verse-overlay h2 { font-style: italic; color: #ffcc00; font-size: 1.5rem; margin-bottom: 20px; }
+        #verse-overlay .verse-text { font-size: 1.2rem; max-width: 90%; line-height: 1.6; }
+        #verse-overlay .close-text { font-size: 0.7rem; margin-top: 30px; opacity: 0.5; cursor: pointer; }
+    </style>
+</head>
+<body>
+
+    <div id="flash"></div>
+
+    <div id="timer-container">
+        <div class="time-segment"><div id="hours" class="number">00</div><div class="label">Hours</div></div>
+        <div class="time-segment"><div id="minutes" class="number">00</div><div class="label">Minutes</div></div>
+        <div class="time-segment"><div id="seconds" class="number">00</div><div class="label">Seconds</div></div>
+    </div>
+
+    <div id="new-year-ui">
+        <h1 id="greeting">HAPPY NEW YEAR 2026</h1>
+        <p>Welcome to a new beginning</p>
+    </div>
+
+    <div id="credits">
+        <p>As we leave 2025 behind, we carry with us every lesson learned.</p>
+        <p>We've walked through the shadows and danced in the light. Through the good times and the difficult ones, we've grown stronger, wiser, and more resilient.</p>
+        <p>Today, we are simply grateful for the journey, for the breath in our lungs, and for the strength that brought us here.</p>
+        <p>We look forward to 2026 with enthusiasm for adventure. May this year be filled with unexpected joy, kindness, and things finally working out in your favor.</p>
+        <p>The best is yet to come.</p>
+        <br>
+        <p><strong>DIRECTED BY: PHERUN</strong></p>
+    </div>
+
+    <div id="gift-container" onclick="revealVerse()">
+        <div class="gift-box">🎁</div>
+        <p>A GIFT FOR YOU</p>
+    </div>
+
+    <div id="verse-overlay" onclick="resetExperience()">
+        <h2 id="verse-reference"></h2>
+        <p class="verse-text" id="verse-text"></p>
+        <p class="close-text">(Click to restart journey)</p>
+    </div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+
+<script id="starVertexShader" type="x-shader/x-vertex">
+    uniform float uTime; uniform float uSpeedMultiplier; attribute float aSpeed; attribute vec3 aColor; attribute float aSize; varying float vOpacity; varying vec3 vColor;
+    void main() { vec3 pos = position; float zRange = 2000.0; float travelDist = uTime * aSpeed * 150.0 * uSpeedMultiplier; pos.z = mod(pos.z - travelDist, zRange) - zRange * 0.5; float fadeStart = 400.0; vOpacity = smoothstep(-500.0, fadeStart, pos.z) * smoothstep(800.0, 400.0, pos.z); vColor = aColor; vec4 mvPosition = modelViewMatrix * vec4(pos, 1.0); float depth = -mvPosition.z; gl_PointSize = aSize * (400.0 / depth) * (1.0 + uSpeedMultiplier * 0.3); gl_Position = projectionMatrix * mvPosition; }
+</script>
+<script id="starFragmentShader" type="x-shader/x-fragment">
+    varying float vOpacity; varying vec3 vColor; void main() { vec2 center = gl_PointCoord - vec2(0.5); float dist = length(center); float alpha = smoothstep(0.5, 0.1, dist) * vOpacity; float glow = exp(-dist * 8.0) * 0.4; vec3 finalColor = vColor + glow; gl_FragColor = vec4(finalColor, alpha); }
+</script>
+<script id="wormholeVertexShader" type="x-shader/x-vertex">
+    uniform float uTime; varying vec2 vUv; varying vec3 vPosition; void main() { vUv = uv; vPosition = position; vec3 pos = position; float dist = length(pos); float distortion = sin(dist * 0.1 - uTime * 2.0) * 0.3; pos += normalize(pos) * distortion; gl_Position = projectionMatrix * modelViewMatrix * vec4(pos, 1.0); }
+</script>
+<script id="wormholeFragmentShader" type="x-shader/x-fragment">
+    uniform float uTime; varying vec2 vUv; varying vec3 vPosition; void main() { vec2 center = vUv - 0.5; float dist = length(center); float horizon = smoothstep(0.5, 0.3, dist); float angle = atan(center.y, center.x); float spiral = angle + dist * 10.0 - uTime * 2.0; vec3 color1 = vec3(1.0, 0.3, 0.0); vec3 color2 = vec3(0.0, 0.5, 1.0); vec3 color3 = vec3(1.0, 0.0, 0.8); float mixer = sin(spiral) * 0.5 + 0.5; vec3 color = mix(color1, color2, mixer); color = mix(color, color3, sin(spiral * 1.3) * 0.5 + 0.5); float ring = smoothstep(0.35, 0.4, dist) * smoothstep(0.6, 0.5, dist); color += ring * 2.0; float darkness = smoothstep(0.4, 0.0, dist); color = mix(color, vec3(0.0), darkness); float alpha = smoothstep(0.7, 0.3, dist) + ring * 2.0; gl_FragColor = vec4(color, alpha * 0.9); }
+</script>
+<script id="galaxyVertexShader" type="x-shader/x-vertex">
+    uniform float uTime; attribute vec3 aColor; attribute float aSize; varying vec3 vColor; varying float vAlpha; void main() { vColor = aColor; vec3 pos = position; float angle = atan(pos.x, pos.y); float radius = length(pos.xy); float rotation = uTime * 0.1 + radius * 0.5; float newAngle = angle + rotation; pos.x = cos(newAngle) * radius; pos.y = sin(newAngle) * radius; vAlpha = smoothstep(1000.0, 200.0, radius); vec4 mvPosition = modelViewMatrix * vec4(pos, 1.0); gl_PointSize = aSize * (300.0 / -mvPosition.z); gl_Position = projectionMatrix * mvPosition; }
+</script>
+<script id="galaxyFragmentShader" type="x-shader/x-fragment">
+    varying vec3 vColor; varying float vAlpha; void main() { vec2 center = gl_PointCoord - vec2(0.5); float dist = length(center); float alpha = smoothstep(0.5, 0.0, dist) * vAlpha; gl_FragColor = vec4(vColor, alpha); }
+</script>
+
+<script>
+    let scene, camera, renderer, starMaterial, galaxyMaterial, wormholeMaterial, clock;
+    let wormhole, fireworks = [];
+    let phase = "countdown"; 
+    let speedMult = 1.0;
+    let countdownSeconds = 10;
+    
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    const starCount = isMobile ? 3000 : 6000;
+    const galaxyStarCount = isMobile ? 8000 : 15000;
+
+    const bibleVerses = [
+        { reference: "Jeremiah 29:11", text: "\"For I know the plans I have for you,\" declares the Lord, \"plans to prosper you and not to harm you, plans to give you hope and a future.\"" },
+        { reference: "Philippians 4:13", text: "I can do all things through Christ who strengthens me." },
+        { reference: "Isaiah 41:10", text: "So do not fear, for I am with you; do not be dismayed, for I am your God. I will strengthen you and help you; I will uphold you with my righteous right hand." },
+        { reference: "Proverbs 3:5-6", text: "Trust in the Lord with all your heart and lean not on your own understanding; in all your ways submit to him, and he will make your paths straight." },
+        { reference: "Romans 8:28", text: "And we know that in all things God works for the good of those who love him, who have been called according to his purpose." },
+        { reference: "Joshua 1:9", text: "Have I not commanded you? Be strong and courageous. Do not be afraid; do not be discouraged, for the Lord your God will be with you wherever you go." },
+        { reference: "Psalm 46:1", text: "God is our refuge and strength, an ever-present help in trouble." },
+        { reference: "Isaiah 40:31", text: "But those who hope in the Lord will renew their strength. They will soar on wings like eagles; they will run and not grow weary, they will walk and not be faint." },
+        { reference: "2 Corinthians 5:7", text: "For we walk by faith, not by sight." },
+        { reference: "Matthew 11:28", text: "Come to me, all you who are weary and burdened, and I will give you rest." },
+        { reference: "Psalm 23:4", text: "Even though I walk through the darkest valley, I will fear no evil, for you are with me; your rod and your staff, they comfort me." },
+        { reference: "Philippians 4:6-7", text: "Do not be anxious about anything, but in every situation, by prayer and petition, with thanksgiving, present your requests to God. And the peace of God, which transcends all understanding, will guard your hearts and your minds in Christ Jesus." },
+        { reference: "Psalm 37:4", text: "Take delight in the Lord, and he will give you the desires of your heart." },
+        { reference: "Hebrews 11:1", text: "Now faith is confidence in what we hope for and assurance about what we do not see." }
+    ];
+
+    function init() {
+        scene = new THREE.Scene();
+        scene.fog = new THREE.FogExp2(0x000000, 0.0003);
+        camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 1, 3000);
+        camera.position.z = 200;
+        renderer = new THREE.WebGLRenderer({ antialias: false, alpha: false });
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+        clock = new THREE.Clock();
+
+        createGalaxyBackground();
+        createStarTrails();
+        createWormhole();
+
+        window.addEventListener('resize', onWindowResize);
+        updateCountdown();
+        setInterval(updateCountdown, 1000);
+        animate();
+    }
+
+    function createGalaxyBackground() {
+        const geometry = new THREE.BufferGeometry();
+        const positions = new Float32Array(galaxyStarCount * 3);
+        const colors = new Float32Array(galaxyStarCount * 3);
+        const sizes = new Float32Array(galaxyStarCount);
+        const galaxyColors = [[0.4, 0.6, 1.0], [1.0, 0.8, 0.9], [0.8, 0.9, 1.0], [1.0, 0.9, 0.7], [0.6, 0.4, 1.0]];
+        for (let i = 0; i < galaxyStarCount; i++) {
+            const radius = Math.pow(Math.random(), 0.5) * 800 + 100;
+            const angle = Math.random() * Math.PI * 2;
+            const spiralOffset = radius * 0.3;
+            positions[i*3] = Math.cos(angle + spiralOffset) * radius;
+            positions[i*3+1] = Math.sin(angle + spiralOffset) * radius;
+            positions[i*3+2] = (Math.random() - 0.5) * 200 - 400;
+            const colorIdx = Math.floor(Math.random() * galaxyColors.length);
+            colors[i*3] = galaxyColors[colorIdx][0]; colors[i*3+1] = galaxyColors[colorIdx][1]; colors[i*3+2] = galaxyColors[colorIdx][2];
+            sizes[i] = Math.random() * 2 + 0.5;
+        }
+        geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+        geometry.setAttribute('aColor', new THREE.BufferAttribute(colors, 3));
+        geometry.setAttribute('aSize', new THREE.BufferAttribute(sizes, 1));
+        galaxyMaterial = new THREE.ShaderMaterial({ uniforms: { uTime: { value: 0.0 } }, vertexShader: document.getElementById('galaxyVertexShader').textContent, fragmentShader: document.getElementById('galaxyFragmentShader').textContent, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false });
+        scene.add(new THREE.Points(geometry, galaxyMaterial));
+    }
+
+    function createStarTrails() {
+        const geometry = new THREE.BufferGeometry();
+        const positions = new Float32Array(starCount * 3), speeds = new Float32Array(starCount), colors = new Float32Array(starCount * 3), sizes = new Float32Array(starCount);
+        const trailColors = [[0.2, 0.5, 1.0], [1.0, 0.2, 0.5], [0.0, 1.0, 0.8], [1.0, 0.8, 0.0], [0.7, 0.2, 1.0], [1.0, 0.4, 0.0], [0.0, 1.0, 0.3], [1.0, 1.0, 1.0]];
+        for (let i = 0; i < starCount; i++) {
+            const radius = Math.random() * 600 + 50, angle = Math.random() * Math.PI * 2;
+            positions[i*3] = Math.cos(angle) * radius; positions[i*3+1] = Math.sin(angle) * radius; positions[i*3+2] = Math.random() * 2000 - 1000;
+            speeds[i] = Math.random() * 0.6 + 0.3;
+            const colorIdx = Math.floor(Math.random() * trailColors.length);
+            colors[i*3] = trailColors[colorIdx][0]; colors[i*3+1] = trailColors[colorIdx][1]; colors[i*3+2] = trailColors[colorIdx][2];
+            sizes[i] = Math.random() * 3 + 1;
+        }
+        geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+        geometry.setAttribute('aSpeed', new THREE.BufferAttribute(speeds, 1));
+        geometry.setAttribute('aColor', new THREE.BufferAttribute(colors, 3));
+        geometry.setAttribute('aSize', new THREE.BufferAttribute(sizes, 1));
+        starMaterial = new THREE.ShaderMaterial({ uniforms: { uTime: { value: 0.0 }, uSpeedMultiplier: { value: 1.0 } }, vertexShader: document.getElementById('starVertexShader').textContent, fragmentShader: document.getElementById('starFragmentShader').textContent, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false });
+        scene.add(new THREE.Points(geometry, starMaterial));
+    }
+
+    function createWormhole() {
+        const geometry = new THREE.SphereGeometry(60, 64, 64);
+        wormholeMaterial = new THREE.ShaderMaterial({ uniforms: { uTime: { value: 0.0 } }, vertexShader: document.getElementById('wormholeVertexShader').textContent, fragmentShader: document.getElementById('wormholeFragmentShader').textContent, transparent: true, blending: THREE.AdditiveBlending, side: THREE.DoubleSide });
+        wormhole = new THREE.Mesh(geometry, wormholeMaterial); wormhole.position.z = -500; scene.add(wormhole);
+        for (let i = 0; i < 3; i++) {
+            const ringGeo = new THREE.TorusGeometry(70 + i * 20, 2, 16, 100);
+            const ringMat = new THREE.MeshBasicMaterial({ color: i === 0 ? 0xff6600 : i === 1 ? 0x00ffff : 0xff00ff, transparent: true, opacity: 0.3, blending: THREE.AdditiveBlending });
+            const ring = new THREE.Mesh(ringGeo, ringMat); ring.position.z = -500; ring.rotation.x = Math.PI / 2 + i * 0.2; scene.add(ring);
+        }
+    }
+
+    function triggerSequence() {
+        if(phase !== "countdown") return;
+        
+        phase = "bang";
+        speedMult = 15.0; 
+        
+        const flashEl = document.getElementById('flash');
+        const timerEl = document.getElementById('timer-container');
+        
+        flashEl.style.opacity = "1";
+        timerEl.style.display = "none";
+
+        setTimeout(() => {
+            flashEl.style.opacity = "0";
+            document.getElementById('new-year-ui').style.display = "block";
+            
+            const fwInt = setInterval(createFirework, 600);
+            setTimeout(() => clearInterval(fwInt), 10000);
+
+            setTimeout(() => {
+                const creditsEl = document.getElementById('credits');
+                creditsEl.classList.add('visible');
+                creditsEl.classList.add('roll-up');
+                
+                setTimeout(() => { 
+                    if(phase === "bang") document.getElementById('gift-container').style.display = 'block'; 
+                }, 25000);
+            }, 2000);
+        }, 1500);
+    }
+
+    function updateCountdown() {
+        if (phase !== "countdown") return;
+        if (countdownSeconds > 0) {
+            countdownSeconds--;
+            if (countdownSeconds <= 3) speedMult = 5.0; 
+            if (countdownSeconds === 0) triggerSequence();
+        }
+        document.getElementById('hours').innerText = "00";
+        document.getElementById('minutes').innerText = "00";
+        document.getElementById('seconds').innerText = String(countdownSeconds).padStart(2, '0');
+    }
+
+    function resetExperience() {
+        phase = "countdown";
+        countdownSeconds = 10;
+        speedMult = 1.0;
+
+        document.getElementById('verse-overlay').style.display = 'none';
+        document.getElementById('gift-container').style.display = 'none';
+        document.getElementById('new-year-ui').style.display = 'none';
+        document.getElementById('timer-container').style.display = 'flex';
+        
+        const creditsEl = document.getElementById('credits');
+        creditsEl.style.display = ''; 
+        creditsEl.classList.remove('visible', 'roll-up');
+        
+        document.getElementById('flash').style.opacity = "0";
+    }
+
+    function createFirework() {
+        const count = isMobile ? 50 : 80;
+        const geo = new THREE.BufferGeometry();
+        const pos = new Float32Array(count * 3);
+        const vels = [];
+        for (let i = 0; i < count; i++) {
+            pos[i*3]=0; pos[i*3+1]=0; pos[i*3+2]=-200;
+            const theta = Math.random()*Math.PI*2, phi = Math.acos((Math.random()*2)-1), s = Math.random()*2+1;
+            vels.push({x:Math.sin(phi)*Math.cos(theta)*s, y:Math.sin(phi)*Math.sin(theta)*s, z:Math.cos(phi)*s});
+        }
+        geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+        const mesh = new THREE.Points(geo, new THREE.PointsMaterial({ color: new THREE.Color(`hsl(${Math.random()*360}, 100%, 70%)`), size: 3, transparent: true, blending: THREE.AdditiveBlending }));
+        scene.add(mesh);
+        fireworks.push({ mesh, vels, life: 1.0 });
+    }
+
+    function animate() {
+        const delta = clock.getElapsedTime();
+        starMaterial.uniforms.uTime.value = delta;
+        starMaterial.uniforms.uSpeedMultiplier.value = speedMult;
+        galaxyMaterial.uniforms.uTime.value = delta;
+        wormholeMaterial.uniforms.uTime.value = delta;
+        wormhole.rotation.z += 0.01;
+
+        for (let i = fireworks.length - 1; i >= 0; i--) {
+            const fw = fireworks[i];
+            const p = fw.mesh.geometry.attributes.position.array;
+            fw.life -= 0.01;
+            fw.mesh.material.opacity = fw.life;
+            for (let j=0; j<p.length/3; j++) {
+                p[j*3] += fw.vels[j].x; p[j*3+1] += fw.vels[j].y; p[j*3+2] += fw.vels[j].z;
+            }
+            fw.mesh.geometry.attributes.position.needsUpdate = true;
+            if (fw.life <= 0) { scene.remove(fw.mesh); fw.mesh.geometry.dispose(); fw.mesh.material.dispose(); fireworks.splice(i, 1); }
+        }
+        renderer.render(scene, camera);
+        requestAnimationFrame(animate);
+    }
+
+    function onWindowResize() { camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); }
+    function revealVerse() { 
+        const randomVerse = bibleVerses[Math.floor(Math.random() * bibleVerses.length)];
+        document.getElementById('verse-reference').innerText = randomVerse.reference;
+        document.getElementById('verse-text').innerText = randomVerse.text;
+        document.getElementById('verse-overlay').style.display = 'flex'; 
+    }
+    init();
+</script>
+</body>
+</html>
